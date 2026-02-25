@@ -1,7 +1,7 @@
 # RSS Data Specification
 
 ## RSS Source
-http://kind.krx.co.kr:80/disclosure/rsstodaydistribute.do?method=searchRssTodayDistribute&repIsuSrtCd=&mktTpCd=0&searchCorpName=&currentPageSize=15
+`http://kind.krx.co.kr:80/disclosure/rsstodaydistribute.do?method=searchRssTodayDistribute&repIsuSrtCd=&mktTpCd=0&searchCorpName=&currentPageSize=15`
 
 ## Data Flow
 1. RSS Fetch (XML)
