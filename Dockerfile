@@ -9,6 +9,8 @@ RUN pip install --no-cache-dir -U pip
 COPY pyproject.toml /app/pyproject.toml
 RUN pip install --no-cache-dir -e .
 
+COPY alembic.ini /app/alembic.ini
+COPY alembic /app/alembic
 COPY src /app/src
 
 EXPOSE 8000
