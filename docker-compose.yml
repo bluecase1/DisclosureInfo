@@ -13,10 +13,10 @@ services:
   api:
     build: .
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://disclosure:disclosure@db:5432/disclosure}
-      RSS_URL: ${RSS_URL:-http://kind.krx.co.kr:80/disclosure/rsstodaydistribute.do?method=searchRssTodayDistribute&repIsuSrtCd=&mktTpCd=0&searchCorpName=&currentPageSize=15}
-      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-300}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATABASE_URL: "${DATABASE_URL:-postgresql+psycopg://disclosure:disclosure@db:5432/disclosure}"
+      RSS_URL: "${RSS_URL:-http://kind.krx.co.kr:80/disclosure/rsstodaydistribute.do?method=searchRssTodayDistribute&repIsuSrtCd=&mktTpCd=0&searchCorpName=&currentPageSize=15}"
+      POLL_INTERVAL_SECONDS: "${POLL_INTERVAL_SECONDS:-300}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
     ports:
       - "8000:8000"
     depends_on:
