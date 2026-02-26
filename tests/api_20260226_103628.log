@@ -1,0 +1,13 @@
+============================================================
+API Tests Run at: 2026-02-26T10:35:38.811193
+============================================================
+PASSED: test_list_disclosures_returns_data
+PASSED: test_filter_by_category
+PASSED: test_filter_by_company
+PASSED: test_limit_parameter
+PASSED: test_get_disclosure_detail
+PASSED: test_get_disclosure_not_found
+PASSED: test_categories_endpoint
+============================================================
+All 7 tests PASSED!
+============================================================

@@ -1,31 +1,126 @@
-from fastapi import APIRouter, Query
-from datetime import datetime
+# coding: utf-8
+from fastapi import APIRouter, Query, Depends, HTTPException
+from sqlalchemy.orm import Session
 from typing import Optional
+
+from disclosureinfo.db import get_db
+from disclosureinfo.repositories import disclosure_query_repo
+from disclosureinfo.schemas import (
+    DisclosureListItem,
+    DisclosureListResponse,
+    DisclosureDetailFullResponse,
+    CategoryListResponse,
+    ClassificationResponse,
+    ExtractedFieldResponse,
+    DisclosureDetailResponse,
+)
 
 router = APIRouter()
 
-@router.get("/disclosures")
+
+@router.get("/disclosures", response_model=DisclosureListResponse)
 def list_disclosures(
-    since: Optional[datetime] = Query(default=None),
-    category: Optional[str] = Query(default=None),
-    company: Optional[str] = Query(default=None),
-    limit: int = Query(default=50, ge=1, le=200),
+    since: Optional[str] = Query(default=None, description="ISO datetime filter"),
+    category: Optional[str] = Query(default=None, description="Category filter"),
+    company: Optional[str] = Query(default=None, description="Company name filter"),
+    limit: int = Query(default=50, ge=1, le=200, description="Max items to return"),
+    db: Session = Depends(get_db),
 ):
-    # TODO: connect DB and return results
-    return {
-        "items": [],
-        "filters": {"since": since, "category": category, "company": company, "limit": limit},
-    }
+    """List disclosures with optional filters."""
+    # Parse since datetime if provided
+    since_dt = None
+    if since:
+        try:
+            since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid since datetime format")
+    
+    # Query disclosures
+    disclosures, total = disclosure_query_repo.list_disclosures(
+        db=db,
+        since=since_dt,
+        category=category,
+        company=company,
+        limit=limit,
+    )
+    
+    # Build response items with category info
+    items = []
+    for d in disclosures:
+        # Get latest classification category if available
+        cat = None
+        if d.classifications:
+            # classifications is already loaded via joinedload
+            latest = d.classifications[0] if d.classifications else None
+            cat = latest.category if latest else None
+        
+        items.append(DisclosureListItem(
+            id=d.id,
+            title=d.title,
+            company_name=d.company_name,
+            published_at=d.published_at,
+            link=d.link,
+            has_detail=d.detail is not None,
+            category=cat,
+        ))
+    
+    return DisclosureListResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        filters={"since": since, "category": category, "company": company},
+    )
 
-@router.get("/disclosures/{disclosure_id}")
-def get_disclosure(disclosure_id: str):
-    # TODO: connect DB and return detail
-    return {"id": disclosure_id, "detail": None}
 
-@router.get("/categories")
+@router.get("/disclosures/{disclosure_id}", response_model=DisclosureDetailFullResponse)
+def get_disclosure(
+    disclosure_id: int,
+    db: Session = Depends(get_db),
+):
+    """Get disclosure detail by ID."""
+    disclosure = disclosure_query_repo.get_disclosure_by_id(db, disclosure_id)
+    
+    if not disclosure:
+        raise HTTPException(status_code=404, detail="Disclosure not found")
+    
+    # Build classification response (latest)
+    classification = None
+    if disclosure.classifications:
+        latest = disclosure.classifications[0]  # Already sorted by created_at desc
+        classification = ClassificationResponse.model_validate(latest)
+    
+    # Build extracted fields
+    extracted_fields = []
+    if disclosure.extracted_fields:
+        for ef in disclosure.extracted_fields:
+            extracted_fields.append(ExtractedFieldResponse.model_validate(ef))
+    
+    # Build detail response
+    detail = None
+    if disclosure.detail:
+        # Don't return raw_html for security/performance
+        detail = DisclosureDetailResponse(
+            id=disclosure.detail.id,
+            disclosure_id=disclosure.detail.disclosure_id,
+            body_text=disclosure.detail.body_text,
+            fetched_at=disclosure.detail.fetched_at,
+        )
+    
+    return DisclosureDetailFullResponse(
+        id=disclosure.id,
+        title=disclosure.title,
+        company_name=disclosure.company_name,
+        published_at=disclosure.published_at,
+        link=disclosure.link,
+        guid=disclosure.guid,
+        detail=detail,
+        classification=classification,
+        extracted_fields=extracted_fields,
+        created_at=disclosure.created_at,
+    )
+
+
+@router.get("/categories", response_model=CategoryListResponse)
 def categories():
-    return {
-        "categories": [
-            "FINANCE", "OWNERSHIP", "CONTRACT", "MNA", "NEW_BIZ", "RELATED_PARTY", "CORRECTION", "OTHER"
-        ]
-    }
+    """Get supported categories."""
+    return CategoryListResponse()
