@@ -23,4 +23,6 @@ class Settings(BaseSettings):
     detail_fetch_retry_attempts: int = Field(3, alias="DETAIL_FETCH_RETRY_ATTEMPTS")
     detail_fetch_retry_min_seconds: float = Field(0.5, alias="DETAIL_FETCH_RETRY_MIN_SECONDS")
     detail_fetch_retry_max_seconds: float = Field(5.0, alias="DETAIL_FETCH_RETRY_MAX_SECONDS")
-    detail_batch_size: int = Field(50, alias="DETAIL_BATCH_SIZE")
+    classifier_version: str = Field("rule-v1", alias="CLASSIFIER_VERSION")
+    classify_batch_limit: int = Field(100, alias="CLASSIFY_BATCH_LIMIT")
+    classify_update_existing: bool = Field(False, alias="CLASSIFY_UPDATE_EXISTING")
