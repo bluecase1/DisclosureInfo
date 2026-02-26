@@ -24,9 +24,10 @@ def list_disclosures(
     category: Optional[str] = Query(default=None, description="Category filter"),
     company: Optional[str] = Query(default=None, description="Company name filter"),
     limit: int = Query(default=50, ge=1, le=200, description="Max items to return"),
+    cursor: Optional[str] = Query(default=None, description="Pagination cursor (format: published_at|id)"),
     db: Session = Depends(get_db),
 ):
-    """List disclosures with optional filters."""
+    """List disclosures with cursor-based pagination and optional filters."""
     # Parse since datetime if provided
     since_dt = None
     if since:
@@ -35,13 +36,14 @@ def list_disclosures(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid since datetime format")
     
-    # Query disclosures
-    disclosures, total = disclosure_query_repo.list_disclosures(
+    # Query disclosures with cursor pagination
+    disclosures, total, next_cursor = disclosure_query_repo.list_disclosures(
         db=db,
         since=since_dt,
         category=category,
         company=company,
         limit=limit,
+        cursor=cursor,
     )
     
     # Build response items with category info
@@ -66,8 +68,10 @@ def list_disclosures(
     
     return DisclosureListResponse(
         items=items,
+        count=len(items),
         total=total,
         limit=limit,
+        next_cursor=next_cursor,
         filters={"since": since, "category": category, "company": company},
     )
 
@@ -75,6 +79,8 @@ def list_disclosures(
 @router.get("/disclosures/{disclosure_id}", response_model=DisclosureDetailFullResponse)
 def get_disclosure(
     disclosure_id: int,
+    include_body: bool = Query(default=True, description="Include body_text in response"),
+    body_max_chars: Optional[int] = Query(default=None, description="Truncate body_text to max chars"),
     db: Session = Depends(get_db),
 ):
     """Get disclosure detail by ID."""
@@ -83,7 +89,7 @@ def get_disclosure(
     if not disclosure:
         raise HTTPException(status_code=404, detail="Disclosure not found")
     
-    # Build classification response (latest)
+    # Build classification response (latest 1 only)
     classification = None
     if disclosure.classifications:
         latest = disclosure.classifications[0]  # Already sorted by created_at desc
@@ -95,14 +101,19 @@ def get_disclosure(
         for ef in disclosure.extracted_fields:
             extracted_fields.append(ExtractedFieldResponse.model_validate(ef))
     
-    # Build detail response
+    # Build detail response with body control
     detail = None
     if disclosure.detail:
-        # Don't return raw_html for security/performance
+        body_text = None
+        if include_body and disclosure.detail.body_text:
+            body_text = disclosure.detail.body_text
+            if body_max_chars and len(body_text) > body_max_chars:
+                body_text = body_text[:body_max_chars] + "..."
+        
         detail = DisclosureDetailResponse(
             id=disclosure.detail.id,
             disclosure_id=disclosure.detail.disclosure_id,
-            body_text=disclosure.detail.body_text,
+            body_text=body_text,
             fetched_at=disclosure.detail.fetched_at,
         )
     

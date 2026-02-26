@@ -88,6 +88,13 @@ class CategoryListResponse(BaseModel):
 
 
 class DisclosureListResponse(BaseModel):
+    """Disclosure list response with cursor pagination info."""
+    items: list[DisclosureListItem]
+    count: int = Field(description="Number of items in current page")
+    total: int = Field(description="Total number of items matching filters")
+    limit: int
+    next_cursor: str | None = Field(default=None, description="Cursor for next page")
+    filters: dict[str, Any] = Field(default_factory=dict)
     """Disclosure list response with pagination info."""
     items: list[DisclosureListItem]
     total: int
